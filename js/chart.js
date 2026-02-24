@@ -10,8 +10,8 @@ let lastIndex = 0;
 
 function resizeCanvas() {
     const container = document.getElementById('chartContainer');
-    canvas.width = container.clientWidth;
-    canvas.height = 400;
+    canvas.width = Math.max(container.clientWidth, 1000);
+    canvas.height = 800;
     render();
 }
 
