@@ -3,260 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Project</title>
+    <title>Simple Trade Sim</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #1a1a1a; color: #ddd; font-family: sans-serif; padding: 20px; }
+        .controls { margin-bottom: 10px; display: flex; gap: 10px; align-items: center; }
+        input[type="file"] { color: #ddd; }
+        button { padding: 8px 16px; cursor: pointer; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        #chartContainer { margin-top: 20px; }
+        canvas { background: #000; display: block; }
+    </style>
 </head>
 <body>
-    <h1>Привет, мир!</h1>
-    <input type="file" id="fileInput" accept=".txt,.csv">
-    <button id="clearBtn" disabled>Очистить базу</button>
+    <div class="controls">
+        <input type="file" id="fileInput" accept=".txt,.csv">
+        <button id="clearBtn" disabled>Очистить базу</button>
+    </div>
     <div id="debug"></div>
-    <div id="app"></div>
+    <div id="chartContainer">
+        <canvas id="chart"></canvas>
+    </div>
 
-    <script>
-        const DB_NAME = 'CandlesDB';
-        const DB_VERSION = 1;
-        const STORE_NAME = 'candles';
-        let db = null;
-
-        function openDB() {
-            return new Promise((resolve, reject) => {
-                const request = indexedDB.open(DB_NAME, DB_VERSION);
-                
-                request.onerror = () => reject(request.error);
-                request.onsuccess = () => {
-                    db = request.result;
-                    resolve(db);
-                };
-                
-                request.onupgradeneeded = (e) => {
-                    const database = e.target.result;
-                    if (!database.objectStoreNames.contains(STORE_NAME)) {
-                        const store = database.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
-                        store.createIndex('id', 'id', { unique: true });
-                    }
-                };
-            });
-        }
-
-        function clearCandles() {
-            return new Promise((resolve, reject) => {
-                const tx = db.transaction(STORE_NAME, 'readwrite');
-                const store = tx.objectStore(STORE_NAME);
-                store.clear();
-                tx.oncomplete = () => resolve();
-                tx.onerror = () => reject(tx.error);
-            });
-        }
-
-        function addCandles(candles) {
-            return new Promise((resolve, reject) => {
-                const tx = db.transaction(STORE_NAME, 'readwrite');
-                const store = tx.objectStore(STORE_NAME);
-                
-                for (const c of candles) {
-                    store.add({ open: c.open, high: c.high, low: c.low, close: c.close });
-                }
-                
-                tx.oncomplete = () => resolve();
-                tx.onerror = () => reject(tx.error);
-            });
-        }
-
-        function getAllCandles() {
-            return new Promise((resolve, reject) => {
-                const tx = db.transaction(STORE_NAME, 'readonly');
-                const store = tx.objectStore(STORE_NAME);
-                const request = store.getAll();
-                
-                request.onsuccess = () => resolve(request.result);
-                request.onerror = () => reject(request.error);
-            });
-        }
-
-        function getCandleRange(start, count) {
-            return new Promise((resolve, reject) => {
-                const tx = db.transaction(STORE_NAME, 'readonly');
-                const store = tx.objectStore(STORE_NAME);
-                const results = [];
-                let i = 0;
-                
-                const request = store.openCursor();
-                request.onsuccess = (e) => {
-                    const cursor = e.target.result;
-                    if (cursor) {
-                        if (i >= start && i < start + count) {
-                            results.push(cursor.value);
-                        } else if (i >= start + count) {
-                            resolve(results);
-                            return;
-                        }
-                        i++;
-                        cursor.continue();
-                    } else {
-                        resolve(results);
-                    }
-                };
-                request.onerror = () => reject(request.error);
-            });
-        }
-
-        function getCandleCount() {
-            return new Promise((resolve, reject) => {
-                const tx = db.transaction(STORE_NAME, 'readonly');
-                const store = tx.objectStore(STORE_NAME);
-                const request = store.count();
-                
-                request.onsuccess = () => resolve(request.result);
-                request.onerror = () => reject(request.error);
-            });
-        }
-
-        const DELIMITERS = [';', ',', ':', ' ', '\t'];
-        
-        function detectDelimiter(lines) {
-            const counts = {};
-            for (const d of DELIMITERS) {
-                counts[d] = 0;
-                for (const line of lines.slice(0, 10)) {
-                    counts[d] += (line.match(new RegExp(d === ' ' ? '\\s' : d.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
-                }
-            }
-            return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
-        }
-
-        function parseValue(str) {
-            const cleaned = str.trim().replace(/,/g, '.');
-            const num = parseFloat(cleaned);
-            return isNaN(num) ? null : num;
-        }
-
-        function isValidOHLC(cols) {
-            const open = parseValue(cols[0]);
-            const high = parseValue(cols[1]);
-            const low = parseValue(cols[2]);
-            const close = parseValue(cols[3]);
-            
-            if (open === null || high === null || low === null || close === null) return false;
-            if (high < low) return false;
-            if (open < low || open > high || close < low || close > high) return false;
-            
-            return true;
-        }
-
-        function findOHLCColumns(rows, delimiter) {
-            const startRow = 0;
-            const colsCount = rows[0].length;
-            
-            for (let col = 0; col < colsCount - 3; col++) {
-                let validCount = 0;
-                for (const row of rows.slice(startRow, startRow + 20)) {
-                    if (isValidOHLC(row.slice(col, col + 4))) validCount++;
-                }
-                if (validCount >= 5) return col;
-            }
-            return -1;
-        }
-
-        async function loadCandles(file) {
-            const reader = new FileReader();
-            reader.onload = async function(e) {
-                const text = e.target.result;
-                const lines = text.split(/\r?\n/).filter(line => line.trim());
-                
-                if (lines.length === 0) {
-                    console.log('Файл пуст');
-                    return;
-                }
-
-                const delimiter = detectDelimiter(lines);
-                const rows = lines.map(line => line.split(delimiter).map(cell => cell.trim()));
-                
-                const firstRow = rows[0];
-                const numericCount = firstRow.filter(cell => parseValue(cell) !== null).length;
-                const startRow = numericCount >= 4 ? 0 : 1;
-                
-                const ohlcStart = findOHLCColumns(rows.slice(startRow), delimiter);
-                
-                if (ohlcStart === -1) {
-                    console.log('Не удалось найти 4 последовательные колонки с числами');
-                    return;
-                }
-
-                const candles = [];
-                
-                for (let i = startRow; i < rows.length; i++) {
-                    const row = rows[i];
-                    const cols = row.slice(ohlcStart, ohlcStart + 4);
-                    
-                    const open = parseValue(cols[0]);
-                    const high = parseValue(cols[1]);
-                    const low = parseValue(cols[2]);
-                    const close = parseValue(cols[3]);
-
-                    if (open === null || high === null || low === null || close === null) {
-                        console.log(`Строка ${i + 1}: не удалось распознать числа - ${row.join(delimiter)}`);
-                        continue;
-                    }
-
-                    if (high < low) {
-                        console.log(`Строка ${i + 1}: high (${high}) меньше low (${low})`);
-                        continue;
-                    }
-
-                    if (open > high || open < low || close > high || close < low) {
-                        console.log(`Строка ${i + 1}: значения open/close вне диапазона [low, high]`);
-                    }
-
-                    candles.push({ open, high, low, close });
-                }
-
-                await clearCandles();
-                await addCandles(candles);
-                
-                const total = await updateButtonState();
-                console.log(`Загружено ${candles.length} свечей, всего в БД: ${total}`);
-
-                const debug = await getCandleRange(0, 20);
-                const debugDiv = document.getElementById('debug');
-                debugDiv.innerHTML = '<h3>Первые 20 свечей из БД:</h3>' + 
-                    debug.map((c, i) => `${i}: O=${c.open} H=${c.high} L=${c.low} C=${c.close}`).join('<br>');
-            };
-            reader.readAsText(file);
-        }
-
-        async function updateButtonState() {
-            const count = await getCandleCount();
-            document.getElementById('clearBtn').disabled = count === 0;
-            return count;
-        }
-
-        async function init() {
-            await openDB();
-            console.log('IndexedDB инициализирована');
-            
-            const count = await updateButtonState();
-            if (count > 0) {
-                const debug = await getCandleRange(0, 20);
-                const debugDiv = document.getElementById('debug');
-                debugDiv.innerHTML = `<h3>В БД уже есть ${count} свечей. Первые 20:</h3>` + 
-                    debug.map((c, i) => `${i}: O=${c.open} H=${c.high} L=${c.low} C=${c.close}`).join('<br>');
-            }
-        }
-
-        init();
-
-        document.getElementById('fileInput').addEventListener('change', function(e) {
-            if (e.target.files.length > 0) {
-                loadCandles(e.target.files[0]);
-            }
-        });
-
-        document.getElementById('clearBtn').addEventListener('click', async function() {
-            await clearCandles();
-            await updateButtonState();
-            document.getElementById('debug').innerHTML = '';
-            console.log('База очищена');
-        });
-    </script>
+    <script src="js/db.js"></script>
+    <script src="js/parser.js"></script>
+    <script src="js/chart.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>
