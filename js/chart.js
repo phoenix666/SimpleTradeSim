@@ -9,6 +9,7 @@ const GRID_LINES = 10;
 
 let candles = [];
 let lastIndex = 0;
+let previousClosePrice = 0;
 
 function resizeCanvas() {
     const container = document.getElementById('chartContainer');
@@ -50,11 +51,10 @@ function countDecimalDigits(num) {
     return 0;
   }
 }
-function roundTo(value, num) {
+function formatPrice(value, num) {
     if (!Number.isFinite(value)) return value;
     
-    const factor = 10 ** num;
-    return Math.round(value * factor * 2) / (factor * 2);
+    return value.toFixed(num);
 }
 function render() {
     const dpr = window.devicePixelRatio || 1;
@@ -122,7 +122,7 @@ function render() {
     for (let i = 0; i < GRID_LINES; i++) {
         const price = gridStart - i * gridStep;
         const y = ((i+1) / (GRID_LINES)) * chartHeight;
-        const roundedPrice = roundTo(price, maxDecimalDigits);
+        const formattedPrice = formatPrice(price, maxDecimalDigits);
         
         ctx.strokeStyle = '#333';
         ctx.lineWidth = 1;
@@ -136,7 +136,7 @@ function render() {
         
         ctx.fillStyle = '#FFF';
         ctx.textAlign = 'left';
-        ctx.fillText(roundedPrice.toString(), gridX+10, y + 4);
+        ctx.fillText(formattedPrice, gridX+10, y + 4);
     }
     
     /*ctx.fillStyle = '#333';
@@ -157,6 +157,10 @@ async function loadAndRender() {
 
 function onCandlesLoaded(count) {
     loadAndRender();
+    if (typeof updateTradingDisplay === 'function' && candles.length > 0 && lastIndex > 0) {
+        previousClosePrice = candles[lastIndex - 1].close;
+        updateTradingDisplay();
+    }
 }
 
 window.addEventListener('resize', resizeCanvas);

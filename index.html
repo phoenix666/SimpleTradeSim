@@ -7,7 +7,14 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #1a1a1a; color: #ddd; font-family: sans-serif; padding: 20px; }
-        .controls { margin-bottom: 10px; display: flex; gap: 10px; align-items: center; }
+        .controls { margin-bottom: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .trading-panel { margin-top: 10px; padding: 10px; background: #2a2a2a; display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+        .trading-panel label { display: flex; align-items: center; gap: 5px; }
+        .trading-panel input[type="number"] { width: 80px; padding: 4px; }
+        .trading-panel .field { display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
+        .trading-panel .field span { font-weight: bold; }
+        .positive { color: #0f0; }
+        .negative { color: #f00; }
         input[type="file"] { color: #ddd; }
         button { padding: 8px 16px; cursor: pointer; }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -21,6 +28,22 @@
         <button id="clearBtn" disabled>Очистить базу</button>
         <button id="randomBtn">Random</button>
         <button id="stepForwardBtn">Step Forward</button>
+    </div>
+    <div class="trading-panel">
+        <div class="field">CashBalance: <span id="cashBalanceDisplay">10000</span></div>
+        <div class="field">Leverage: 
+            <select id="leverageSelect">
+                <option value="10">1:10</option>
+                <option value="20">1:20</option>
+                <option value="50">1:50</option>
+                <option value="100">1:100</option>
+            </select>
+        </div>
+        <div class="field">PositionSize: <input type="number" id="positionSizeInput" value="50000" min="1"></div>
+        <div class="field">CurrentPosition: <span id="currentPositionDisplay">0</span></div>
+        <div class="field">UnrealizedGain: <span id="unrealizedGainDisplay">0</span></div>
+        <button id="buyBtn">Buy</button>
+        <button id="sellBtn">Sell</button>
     </div>
     <div id="debug"></div>
     <div id="chartContainer">
