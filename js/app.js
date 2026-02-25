@@ -27,3 +27,18 @@ document.getElementById('clearBtn').addEventListener('click', async function() {
     render();
     console.log('База очищена');
 });
+
+document.getElementById('randomBtn').addEventListener('click', function() {
+    if (candles.length > 0) {
+        const minIndex = Math.min(20, candles.length);
+        lastIndex = Math.floor(Math.random() * (candles.length - minIndex + 1)) + minIndex;
+        render();
+    }
+});
+
+document.getElementById('stepForwardBtn').addEventListener('click', function() {
+    if (candles.length > 0 && lastIndex < candles.length) {
+        lastIndex++;
+        render();
+    }
+});
