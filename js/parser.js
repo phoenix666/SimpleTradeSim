@@ -100,7 +100,7 @@ async function loadCandles(file) {
         await clearCandles();
         await addCandles(candles);
         
-        console.log(`Загружено ${candles.length} свечей`);
+        console.log(`Loaded ${candles.length} candles`);
         
         if (typeof onCandlesLoaded === 'function') {
             onCandlesLoaded(candles.length);
@@ -108,3 +108,5 @@ async function loadCandles(file) {
     };
     reader.readAsText(file);
 }
+
+console.log("parser.js loaded");

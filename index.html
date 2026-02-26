@@ -29,9 +29,10 @@
 <body>
     <div class="controls">
         <input type="file" id="fileInput" accept=".txt,.csv">
-        <button id="clearBtn" disabled>Очистить базу</button>
+        <button id="clearBtn" disabled>Wipe Data</button>
         <button id="randomBtn">Random</button>
         <button id="stepForwardBtn">Step Forward</button>
+        <label><input type="checkbox" id="useSl"> Use S/L</label>
     </div>
     <div class="trading-panel">
         <div class="field">CashBalance: <span id="cashBalanceDisplay">10000</span></div>
@@ -48,6 +49,7 @@
         <div class="field">UnrealizedGain: <span id="unrealizedGainDisplay">0</span></div>
         <button id="buyBtn">Buy</button>
         <button id="sellBtn">Sell</button>
+        <button id="closeHalfBtn">Close 50%</button>
     </div>
     <div id="debug"></div>
     <div id="chartContainer">

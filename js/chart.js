@@ -9,7 +9,25 @@ const GRID_LINES = 10;
 
 let candles = [];
 let lastIndex = 0;
-let previousClosePrice = 0;
+let stopLoss = 0;
+let profitLimit = 0;
+let draggingLine = null;
+let currentRange = null;
+
+const DRAG_THRESHOLD = 10;
+
+function setStopLimit(stop, limit) {
+    stopLoss = stop;
+    profitLimit = limit;
+    if (candles.length > 0) {
+        render();
+    }
+}
+
+function clearStopLimit() {
+    stopLoss = 0;
+    profitLimit = 0;
+}
 
 function resizeCanvas() {
     const container = document.getElementById('chartContainer');
@@ -29,6 +47,15 @@ function getPriceRange(startIndex) {
         if (c.high > max) max = c.high;
     }
     
+    if (stopLoss > 0 && (stopLoss < min || stopLoss > max)) {
+        min = Math.min(min, stopLoss);
+        max = Math.max(max, stopLoss);
+    }
+    if (profitLimit > 0 && (profitLimit < min || profitLimit > max)) {
+        min = Math.min(min, profitLimit);
+        max = Math.max(max, profitLimit);
+    }
+    
     const range = max - min;
     return {
         min: min - range * PADDING_TOP,
@@ -40,6 +67,12 @@ function priceToY(price, range) {
     const { min, max } = range;
     const chartHeight = canvas.height * (1 - RIGHT_MARGIN);
     return ((max - price) / (max - min)) * chartHeight;
+}
+
+function yToPrice(y, range) {
+    const { min, max } = range;
+    const chartHeight = canvas.height * (1 - RIGHT_MARGIN);
+    return max - (y / chartHeight) * (max - min);
 }
 
 function countDecimalDigits(num) {
@@ -67,13 +100,14 @@ function render() {
         ctx.fillStyle = '#666';
         ctx.font = '16px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('Загрузите данные', canvas.width / 2, canvas.height / 2);
+        ctx.fillText('Load some Candles Data', canvas.width / 2, canvas.height / 2);
         return;
     }
     
     const visibleCount = Math.min(CANDLE_COUNT, lastIndex);
     const startIndex = lastIndex - visibleCount;
     const range = getPriceRange(lastIndex);
+    currentRange = range;
     
     const chartWidth = canvas.width * (1 - RIGHT_MARGIN);
     const candleWidth = chartWidth / visibleCount;
@@ -138,6 +172,40 @@ function render() {
         ctx.textAlign = 'left';
         ctx.fillText(formattedPrice, gridX+10, y + 4);
     }
+
+    if (stopLoss > 0) {
+        const stopY = priceToY(stopLoss, range);
+        ctx.strokeStyle = '#f00';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(0, stopY);
+        ctx.lineTo(chartWidth, stopY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        ctx.fillStyle = '#f00';
+        ctx.font = '10pt monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText(formatPrice(stopLoss, maxDecimalDigits), chartWidth * 0.7, stopY - 5);
+    }
+    
+    if (profitLimit > 0) {
+        const limitY = priceToY(profitLimit, range);
+        ctx.strokeStyle = '#0f0';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(0, limitY);
+        ctx.lineTo(chartWidth, limitY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        ctx.fillStyle = '#0f0';
+        ctx.font = '10pt monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText(formatPrice(profitLimit, maxDecimalDigits), chartWidth * 0.7, limitY - 5);
+    }
     
     /*ctx.fillStyle = '#333';
     ctx.font = '12px monospace';
@@ -158,9 +226,100 @@ async function loadAndRender() {
 function onCandlesLoaded(count) {
     loadAndRender();
     if (typeof updateTradingDisplay === 'function' && candles.length > 0 && lastIndex > 0) {
-        previousClosePrice = candles[lastIndex - 1].close;
         updateTradingDisplay();
     }
 }
 
 window.addEventListener('resize', resizeCanvas);
+
+function getMousePos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    return {
+        x: (e.clientX - rect.left) * dpr,
+        y: (e.clientY - rect.top) * dpr
+    };
+}
+
+canvas.addEventListener('mousedown', function(e) {
+    if (candles.length === 0 || !currentRange) return;
+    
+    const pos = getMousePos(e);
+    const chartHeight = canvas.height * (1 - RIGHT_MARGIN);
+    
+    if (pos.y > chartHeight) return;
+    
+    if (stopLoss > 0) {
+        const stopY = priceToY(stopLoss, currentRange);
+        if (Math.abs(pos.y - stopY) < DRAG_THRESHOLD) {
+            draggingLine = 'stop';
+            canvas.style.cursor = 'ns-resize';
+            return;
+        }
+    }
+    
+    if (profitLimit > 0) {
+        const limitY = priceToY(profitLimit, currentRange);
+        if (Math.abs(pos.y - limitY) < DRAG_THRESHOLD) {
+            draggingLine = 'limit';
+            canvas.style.cursor = 'ns-resize';
+            return;
+        }
+    }
+});
+
+canvas.addEventListener('mousemove', function(e) {
+    if (candles.length === 0 || !currentRange) return;
+    
+    const pos = getMousePos(e);
+    const chartHeight = canvas.height * (1 - RIGHT_MARGIN);
+    
+    if (draggingLine) {
+        const newPrice = yToPrice(pos.y, currentRange);
+        const digits = countDecimalDigits(candles[lastIndex - 1]?.close || 0);
+        const roundedPrice = parseFloat(newPrice.toFixed(digits));
+        
+        if (draggingLine === 'stop') {
+            stopLoss = roundedPrice;
+        } else if (draggingLine === 'limit') {
+            profitLimit = roundedPrice;
+        }
+        render();
+        return;
+    }
+    
+    let hovered = false;
+    if (stopLoss > 0) {
+        const stopY = priceToY(stopLoss, currentRange);
+        if (Math.abs(pos.y - stopY) < DRAG_THRESHOLD) {
+            hovered = true;
+        }
+    }
+    if (profitLimit > 0) {
+        const limitY = priceToY(profitLimit, currentRange);
+        if (Math.abs(pos.y - limitY) < DRAG_THRESHOLD) {
+            hovered = true;
+        }
+    }
+    
+    canvas.style.cursor = hovered ? 'ns-resize' : 'default';
+});
+
+canvas.addEventListener('mouseup', function() {
+    if (draggingLine) {
+        if (typeof updateTradingDisplay === 'function') {
+            updateTradingDisplay();
+        }
+        draggingLine = null;
+        canvas.style.cursor = 'default';
+    }
+});
+
+canvas.addEventListener('mouseleave', function() {
+    if (draggingLine) {
+        draggingLine = null;
+        canvas.style.cursor = 'default';
+    }
+});
+
+console.log("chart.js loaded");

@@ -95,3 +95,5 @@ function getCandleCount() {
         request.onerror = () => reject(request.error);
     });
 }
+
+console.log("db.js loaded");

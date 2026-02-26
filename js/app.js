@@ -18,6 +18,30 @@ function logOperation(action, amount, pnl = 0) {
     }
 }
 
+function getMaxHlRange() {
+    if (!candles || lastIndex === 0) return 0;
+    const start = Math.max(0, lastIndex - CANDLE_COUNT);
+    let maxHl = 0;
+    for (let i = start; i < lastIndex; i++) {
+        const hl = candles[i].high - candles[i].low;
+        if (hl > maxHl) maxHl = hl;
+    }
+    return maxHl;
+}
+
+function initStopLimit(isLong) {
+    if (!document.getElementById('useSl').checked) return;
+    const openPrice = candles[lastIndex - 1].close;
+    const maxHl = getMaxHlRange();
+    if (isLong) {
+        stopLoss = openPrice - maxHl;
+        profitLimit = openPrice + maxHl;
+    } else {
+        stopLoss = openPrice + maxHl;
+        profitLimit = openPrice - maxHl;
+    }
+}
+
 function updateTradingDisplay() {
     document.getElementById('cashBalanceDisplay').textContent = Math.round(cashBalance);
     
@@ -40,6 +64,19 @@ function updateTradingDisplay() {
         gainDisplay.textContent = '0';
         gainDisplay.className = '';
     }
+
+    const buyBtn = document.getElementById('buyBtn');
+    const sellBtn = document.getElementById('sellBtn');
+    if (currentPosition > 0) {
+        buyBtn.textContent = 'Buy';
+        sellBtn.textContent = 'Close';
+    } else if (currentPosition < 0) {
+        buyBtn.textContent = 'Close';
+        sellBtn.textContent = 'Sell';
+    } else {
+        buyBtn.textContent = 'Buy';
+        sellBtn.textContent = 'Sell';
+    }
 }
 
 function validatePositionSize() {
@@ -53,11 +90,65 @@ function validatePositionSize() {
 function increasePosition(marginSize,positionSize)
 {
     if (marginSize > cashBalance) return;
+    const wasZero = currentPosition === 0;
     cashBalance -= marginSize;
     currentPosition += positionSize;
     positionMargin += marginSize;
     positionCostBasis += positionSize;
+    if (wasZero) {
+        initStopLimit(positionSize > 0);
+        if (stopLoss > 0 || profitLimit > 0) {
+            setStopLimit(stopLoss, profitLimit);
+        }
+    }
     logOperation(positionSize > 0 ? 'Long' : 'Short', positionSize, 0);
+    render();
+}
+
+function checkStopLimitClose(newCandle, oldClose) {
+    if (currentPosition === 0) {
+        return false;
+    }
+    
+    const { open, high, low, close } = newCandle;
+    const whatHappenedFirst = close < open ? high : low;
+    const whatHappenedSecond = close < open ? low : high;
+    
+    const inRange = (value, a, b) => {
+        const min = Math.min(a, b);
+        const max = Math.max(a, b);
+        return value >= min && value <= max;
+    };
+    
+    if (stopLoss > 0 && inRange(stopLoss, oldClose, whatHappenedFirst)) {
+        unrealizedGain = currentPosition * (whatHappenedFirst / oldClose) - positionCostBasis;
+        closePosition();
+        updateTradingDisplay();
+        return true;
+    }
+    
+    if (profitLimit > 0 && inRange(profitLimit, oldClose, whatHappenedFirst)) {
+        unrealizedGain = currentPosition * (whatHappenedFirst / oldClose) - positionCostBasis;
+        closePosition();
+        updateTradingDisplay();
+        return true;
+    }
+    
+    if (stopLoss > 0 && inRange(stopLoss, oldClose, whatHappenedSecond)) {
+        unrealizedGain = currentPosition * (whatHappenedSecond / oldClose) - positionCostBasis;
+        closePosition();
+        updateTradingDisplay();
+        return true;
+    }
+    
+    if (profitLimit > 0 && inRange(profitLimit, oldClose, whatHappenedSecond)) {
+        unrealizedGain = currentPosition * (whatHappenedSecond / oldClose) - positionCostBasis;
+        closePosition();
+        updateTradingDisplay();
+        return true;
+    }
+    
+    return false;
 }
 
 function closePosition(partSize = 0) {
@@ -77,7 +168,11 @@ function closePosition(partSize = 0) {
         positionCostBasis = 0;
         positionMargin    = 0;
         unrealizedGain    = 0;
+        stopLoss = 0;
+        profitLimit = 0;
+        clearStopLimit();
         logOperation('Close', currentPosition > 0 ? absPos : -absPos, closedPnl);
+        render();
         return;
     }
 
@@ -139,6 +234,7 @@ document.getElementById('randomBtn').addEventListener('click', function() {
         currentPosition = 0;
         positionCostBasis = 0;
         positionMargin = 0;
+        clearStopLimit();
         document.getElementById('positionSizeInput').value = positionSize;
         render();
         updateTradingDisplay();
@@ -149,9 +245,16 @@ document.getElementById('stepForwardBtn').addEventListener('click', function() {
     if (candles.length > 0 && lastIndex < candles.length) {
         const oldClose = candles[lastIndex-1].close;
         lastIndex++;
-        const newClose = candles[lastIndex-1].close; 
+        const newCandle = candles[lastIndex-1];
+        const newClose = newCandle.close; 
         
-        if (currentPosition != 0) {
+        if (currentPosition !== 0 && (stopLoss > 0 || profitLimit > 0)) {
+            if (checkStopLimitClose(newCandle, oldClose)) {
+                return;
+            }
+        }
+        
+        if (currentPosition !== 0) {
             currentPosition = currentPosition * newClose / oldClose;
             unrealizedGain = currentPosition - positionCostBasis;
         }
@@ -201,3 +304,20 @@ document.getElementById('sellBtn').addEventListener('click', function() {
         }
     }
 });
+
+document.getElementById('closeHalfBtn').addEventListener('click', function() {
+    if (currentPosition === 0) return;
+    const halfSize = Math.abs(currentPosition) / 2;
+    closePosition(halfSize);
+    updateTradingDisplay();
+});
+
+document.getElementById('useSl').addEventListener('change', function() {
+    if (!this.checked) {
+        stopLoss = 0;
+        profitLimit = 0;
+        clearStopLimit();
+    }
+    render();
+});
+console.log("app.js loaded");
