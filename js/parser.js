@@ -46,12 +46,14 @@ function findOHLCColumns(rows, delimiter) {
 
 async function loadCandles(file) {
     const reader = new FileReader();
+    let errorCount = 0;
     reader.onload = async function(e) {
         const text = e.target.result;
         const lines = text.split(/\r?\n/).filter(line => line.trim());
         
         if (lines.length === 0) {
-            console.log('Файл пуст');
+            console.log('File is empty');
+            showToast('File is empty');
             return;
         }
 
@@ -65,7 +67,8 @@ async function loadCandles(file) {
         const ohlcStart = findOHLCColumns(rows.slice(startRow), delimiter);
         
         if (ohlcStart === -1) {
-            console.log('Не удалось найти 4 последовательные колонки с числами');
+            console.log('Could not find 4 consecutive numeric columns');
+            showToast('Could not find 4 consecutive numeric columns');
             return;
         }
 
@@ -81,26 +84,42 @@ async function loadCandles(file) {
             const close = parseValue(cols[3]);
 
             if (open === null || high === null || low === null || close === null) {
-                console.log(`Строка ${i + 1}: не удалось распознать числа - ${row.join(delimiter)}`);
+                console.log(`Row ${i + 1}: failed to parse numbers - ${row.join(delimiter)}`);
+                errorCount++;
                 continue;
             }
 
             if (high < low) {
-                console.log(`Строка ${i + 1}: high (${high}) меньше low (${low})`);
+                console.log(`Row ${i + 1}: high (${high}) is less than low (${low})`);
+                errorCount++;
                 continue;
             }
 
             if (open > high || open < low || close > high || close < low) {
-                console.log(`Строка ${i + 1}: значения open/close вне диапазона [low, high]`);
+                console.log(`Row ${i + 1}: open/close values out of range [low, high]`);
+                errorCount++;
             }
 
             candles.push({ open, high, low, close });
         }
 
-        await clearCandles();
-        await addCandles(candles);
+        const loading = document.getElementById('loading');
+        const loadingText = document.getElementById('loading-text');
+        loading.classList.add('show');
         
+        await clearCandles();
+        await addCandles(candles, (done, total) => {
+            const pct = Math.round(done / total * 100);
+            loadingText.textContent = `Loading... ${pct}%`;
+        });
+        
+        loading.classList.remove('show');
         console.log(`Loaded ${candles.length} candles`);
+        
+        if (errorCount > 0) {
+            console.log(`There were ${errorCount} errors during loading, see console log for details`);
+            showToast('There were errors during loading, see console log for details');
+        }
         
         if (typeof onCandlesLoaded === 'function') {
             onCandlesLoaded(candles.length);
@@ -110,3 +129,12 @@ async function loadCandles(file) {
 }
 
 console.log("parser.js loaded");
+
+function showToast(message) {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.classList.add('show');
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 5000);
+}

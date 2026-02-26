@@ -33,17 +33,37 @@ function clearCandles() {
     });
 }
 
-function addCandles(candles) {
+function addCandles(candles, onProgress) {
+    const CHUNK_SIZE = 5000;
     return new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        const store = tx.objectStore(STORE_NAME);
-        
-        for (const c of candles) {
-            store.add({ open: c.open, high: c.high, low: c.low, close: c.close });
+        async function insertChunk(start) {
+            const end = Math.min(start + CHUNK_SIZE, candles.length);
+            const tx = db.transaction(STORE_NAME, 'readwrite');
+            const store = tx.objectStore(STORE_NAME);
+            
+            for (let i = start; i < end; i++) {
+                const c = candles[i];
+                store.add({ open: c.open, high: c.high, low: c.low, close: c.close });
+            }
+            
+            return new Promise((res, rej) => {
+                tx.oncomplete = () => {
+                    if (onProgress) onProgress(end, candles.length);
+                    res();
+                };
+                tx.onerror = () => rej(tx.error);
+            });
         }
         
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
+        async function insertAll() {
+            for (let i = 0; i < candles.length; i += CHUNK_SIZE) {
+                await insertChunk(i);
+                await new Promise(r => setTimeout(r, 0));
+            }
+            resolve();
+        }
+        
+        insertAll().catch(reject);
     });
 }
 

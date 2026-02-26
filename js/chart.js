@@ -13,6 +13,7 @@ let stopLoss = 0;
 let profitLimit = 0;
 let draggingLine = null;
 let currentRange = null;
+let maxDecimalDigits = 0;
 
 const DRAG_THRESHOLD = 10;
 
@@ -113,9 +114,7 @@ function render() {
     const candleWidth = chartWidth / visibleCount;
     const bodyWidth = candleWidth * 0.8;
     const wickWidth = 1;
-    
-    let maxDecimalDigits = 0;
-    
+    maxDecimalDigits = 0;
     for (let i = 0; i < visibleCount; i++) {
         const candle = candles[startIndex + i];
         const x = i * candleWidth + candleWidth / 2;
@@ -215,16 +214,24 @@ function render() {
 }
 
 async function loadAndRender() {
+    const loading = document.getElementById('loading');
+    const loadingText = document.getElementById('loading-text');
+    loading.classList.add('show');
+    loadingText.textContent = 'Preparing data...';
+    
     const count = await getCandleCount();
     if (count > 0) {
         candles = await getAllCandles();
         lastIndex = candles.length;
         render();
     }
+    
+    loading.classList.remove('show');
 }
 
 function onCandlesLoaded(count) {
     loadAndRender();
+    if (typeof updateButtonState === 'function') updateButtonState();
     if (typeof updateTradingDisplay === 'function' && candles.length > 0 && lastIndex > 0) {
         updateTradingDisplay();
     }
@@ -276,8 +283,8 @@ canvas.addEventListener('mousemove', function(e) {
     
     if (draggingLine) {
         const newPrice = yToPrice(pos.y, currentRange);
-        const digits = countDecimalDigits(candles[lastIndex - 1]?.close || 0);
-        const roundedPrice = parseFloat(newPrice.toFixed(digits));
+        //const digits = countDecimalDigits(candles[lastIndex - 1]?.close || 0);
+        const roundedPrice = parseFloat(newPrice.toFixed(maxDecimalDigits)); //digits
         
         if (draggingLine === 'stop') {
             stopLoss = roundedPrice;

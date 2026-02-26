@@ -1,11 +1,31 @@
 let cashBalance = 10000;
-let leverage = 10;
+let leverage = 20;
 let positionSize = 50000;
 let currentPosition = 0;
-let positionCostBasis = 0;   // сколько всего "вложено" в позицию по цене открытия (сумма всех размеров при Buy)
-let positionMargin = 0;      // сколько реально зарезервировано кэша из CashBalance под эту позицию
-let unrealizedGain = 0; // нереализованная прибиль или убыток
+let positionCostBasis = 0;
+let positionMargin = 0;
+let unrealizedGain = 0;
+let spreadValue = 0;
 const MAX_LOG_ENTRIES = 10;
+
+function calculateSpread() {
+    const emulateSpread = document.getElementById('emulateSpread').checked;
+    if (!emulateSpread || candles.length === 0) {
+        spreadValue = 0;
+        return;
+    }
+    
+    const startIdx = Math.max(0, lastIndex - 20);
+    let sum = 0;
+    let count = 0;
+    
+    for (let i = startIdx; i < lastIndex; i++) {
+        sum += candles[i].high - candles[i].low;
+        count++;
+    }
+    
+    spreadValue = ((sum / count) * 0.05)/candles[lastIndex-1].close; // percentage, not absolute value
+}
 
 function logOperation(action, amount, pnl = 0) {
     const logDiv = document.getElementById('log');
@@ -94,7 +114,8 @@ function increasePosition(marginSize,positionSize)
     cashBalance -= marginSize;
     currentPosition += positionSize;
     positionMargin += marginSize;
-    positionCostBasis += positionSize;
+    positionCostBasis += positionSize * (positionSize<0?(1-spreadValue):(1+spreadValue));
+    unrealizedGain = currentPosition - positionCostBasis;
     if (wasZero) {
         initStopLimit(positionSize > 0);
         if (stopLoss > 0 || profitLimit > 0) {
@@ -119,30 +140,34 @@ function checkStopLimitClose(newCandle, oldClose) {
         const max = Math.max(a, b);
         return value >= min && value <= max;
     };
-    
+    // spread correction
+    let spreadCorrection = (currentPosition<0?(1-spreadValue):(1+spreadValue)); //seems right after testing
+        
     if (stopLoss > 0 && inRange(stopLoss, oldClose, whatHappenedFirst)) {
-        unrealizedGain = currentPosition * (whatHappenedFirst / oldClose) - positionCostBasis;
+        unrealizedGain = currentPosition * (whatHappenedFirst / oldClose) - positionCostBasis*spreadCorrection;
+        //shadowGain = currentPosition * (whatHappenedFirst / oldClose) - positionCostBasis;
+        //console.log(" "+unrealizedGain+" ; "+shadowGain); this was testing in all 4
         closePosition();
         updateTradingDisplay();
         return true;
     }
     
     if (profitLimit > 0 && inRange(profitLimit, oldClose, whatHappenedFirst)) {
-        unrealizedGain = currentPosition * (whatHappenedFirst / oldClose) - positionCostBasis;
+        unrealizedGain = currentPosition * (whatHappenedFirst / oldClose) - positionCostBasis*spreadCorrection;
         closePosition();
         updateTradingDisplay();
         return true;
     }
     
     if (stopLoss > 0 && inRange(stopLoss, oldClose, whatHappenedSecond)) {
-        unrealizedGain = currentPosition * (whatHappenedSecond / oldClose) - positionCostBasis;
+        unrealizedGain = currentPosition * (whatHappenedSecond / oldClose) - positionCostBasis*spreadCorrection;
         closePosition();
         updateTradingDisplay();
         return true;
     }
     
     if (profitLimit > 0 && inRange(profitLimit, oldClose, whatHappenedSecond)) {
-        unrealizedGain = currentPosition * (whatHappenedSecond / oldClose) - positionCostBasis;
+        unrealizedGain = currentPosition * (whatHappenedSecond / oldClose) - positionCostBasis*spreadCorrection;
         closePosition();
         updateTradingDisplay();
         return true;
@@ -236,6 +261,7 @@ document.getElementById('randomBtn').addEventListener('click', function() {
         positionMargin = 0;
         clearStopLimit();
         document.getElementById('positionSizeInput').value = positionSize;
+        calculateSpread();
         render();
         updateTradingDisplay();
     }
@@ -255,10 +281,11 @@ document.getElementById('stepForwardBtn').addEventListener('click', function() {
         }
         
         if (currentPosition !== 0) {
-            currentPosition = currentPosition * newClose / oldClose;
+            currentPosition = currentPosition * newClose*(positionSize<0?(1+spreadValue):(1-spreadValue)) / oldClose;
             unrealizedGain = currentPosition - positionCostBasis;
         }
         
+        calculateSpread();
         render();
         updateTradingDisplay();
     }
@@ -269,9 +296,53 @@ document.getElementById('leverageSelect').addEventListener('change', function() 
     validatePositionSize();
 });
 
+document.getElementById('emulateSpread').addEventListener('change', function() {
+    calculateSpread();
+});
+
 document.getElementById('positionSizeInput').addEventListener('input', function() {
     positionSize = parseInt(this.value) || 0;
     validatePositionSize();
+});
+
+document.getElementById('positionSizeInput').addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        adjustPositionSize(e.key === 'ArrowUp' ? 1 : -1);
+    }
+});
+
+function adjustPositionSize(direction) {
+    const input = document.getElementById('positionSizeInput');
+    let val = parseInt(input.value) || 0;
+    const str = val.toString();
+    const firstDigit = parseInt(str[0]);
+    
+    if (direction > 0) {
+        if (firstDigit < 9) {
+            val = (firstDigit + 1) * Math.pow(10, str.length - 1);
+        } else {
+            val = parseInt('1' + '0'.repeat(str.length));
+        }
+    } else {
+        if (firstDigit > 1) {
+            val = (firstDigit - 1) * Math.pow(10, str.length - 1);
+        } else {
+            val = 9 * Math.pow(10, str.length - 2);
+        }
+    }
+    
+    input.value = val;
+    positionSize = val;
+    validatePositionSize();
+}
+
+document.getElementById('posSizeUp').addEventListener('click', function() {
+    adjustPositionSize(1);
+});
+
+document.getElementById('posSizeDown').addEventListener('click', function() {
+    adjustPositionSize(-1);
 });
 
 document.getElementById('buyBtn').addEventListener('click', function() {
