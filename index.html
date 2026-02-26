@@ -15,11 +15,15 @@
         .trading-panel .field span { font-weight: bold; }
         .positive { color: #0f0; }
         .negative { color: #f00; }
+        .pos-light { color: #6f6; }
+        .neg-light { color: #f66; }
         input[type="file"] { color: #ddd; }
         button { padding: 8px 16px; cursor: pointer; }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
         #chartContainer { margin-top: 20px; }
         canvas { background: #000; display: block; }
+        #log { margin-top: 20px; font-size: 12px; max-height: 200px; overflow-y: auto; }
+        #log div { padding: 2px 0; border-bottom: 1px solid #333; }
     </style>
 </head>
 <body>
@@ -49,6 +53,7 @@
     <div id="chartContainer">
         <canvas id="chart" width="800" height="400" style='width:800px;height:400px;'></canvas>
     </div>
+    <div id="log"></div>
 
     <script src="js/db.js"></script>
     <script src="js/parser.js"></script>

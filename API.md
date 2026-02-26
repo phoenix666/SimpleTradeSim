@@ -30,10 +30,13 @@
 
 ## app.js (Приложение)
 
-- `updateTradingDisplay()` - Обновляет отображение CashBalance, CurrentPosition и UnrealizedGain на странице.
+- `updateTradingDisplay()` - Обновляет отображение CashBalance, CurrentPosition и UnrealizedGain на странице. CurrentPosition окрашивается: положительный - светло-зеленый, отрицательный - светло-красный.
 - `validatePositionSize()` - Проверяет, что PositionSize не превышает 0.8 * CashBalance * Leverage. Если превышает - корректирует в меньшую сторону.
+- `increasePosition(marginSize, positionSize)` - Увеличивает позицию: вычитает маржу из cashBalance, добавляет amount к currentPosition, обновляет positionMargin и positionCostBasis. Логирует операцию.
+- `closePosition(partSize)` - Закрывает позицию полностью или частично. При закрытии возвращает маржу + PnL в cashBalance. Логирует операцию с размером закрытия и PnL.
+- `logOperation(action, amount, pnl)` - Записывает операцию в лог. `action` - тип операции (Long/Short/Close/Partial close), `amount` - количество актива, `pnl` - финансовый результат (0 если позиция только открыта). PnL окрашивается: прибыль - зеленый, убыток - красный.
 - `updateButtonState()` - Обновляет состояние кнопки "Очистить базу" (disabled если свечей нет). Возвращает количество свечей.
-- `init()` - Инициализация приложения: открывает БД, обновляет состояние кнопок, загружает данные, инициализирует previousClosePrice.
+- `init()` - Инициализация приложения: открывает БД, обновляет состояние кнопок, загружает данные.
 - Обработчики событий:
   - `fileInput.change` - Запускает загрузку свечей при выборе файла.
   - `clearBtn.click` - Очищает базу и сбрасывает график.
@@ -41,8 +44,8 @@
   - `stepForwardBtn.click` - Увеличивает lastIndex на 1, пересчитывает позицию пропорционально изменению цены.
   - `leverageSelect.change` - Обновляет leverage и валидирует PositionSize.
   - `positionSizeInput.input` - Обновляет positionSize и валидирует его.
-  - `buyBtn.click` - Открывает длинную позицию: вычитает маржу из CashBalance, добавляет к CurrentPosition.
-  - `sellBtn.click` - Закрывает позицию: возвращает маржу в CashBalance, обнуляет CurrentPosition.
+  - `buyBtn.click` - Если позиции нет - открывает длинную (long). Если есть короткая - закрывает её.
+  - `sellBtn.click` - Если позиции нет - открывает короткую (short). Если есть длинная - закрывает её.
 
 ## Глобальные переменные
 
@@ -58,7 +61,19 @@
 - `cashBalance` - Текущий доступный баланс (начальное значение 10000).
 - `leverage` - Кредитное плечо (10, 20, 50 или 100).
 - `positionSize` - Размер позиции, которую хочет открыть пользователь.
-- `currentPosition` - Текущий размер открытой позиции в единицах актива.
-- `positionCostBasis` - Сумма всех "вложений" в позицию по цене открытия (сумма всех размеров при Buy).
+- `currentPosition` - Текущий размер открытой позиции в единицах актива (может быть отрицательным для short).
+- `positionCostBasis` - Сумма всех "вложений" в позицию по цене открытия.
 - `positionMargin` - Сколько реально зарезервировано кэша из CashBalance под позицию.
 - `unrealizedGain` - Нереализованная прибыль или убыток.
+- `MAX_LOG_ENTRIES` - Максимальное количество записей в логе операций (10).
+
+## CSS классы
+
+- `.positive` - Ярко-зеленый цвет для положительного unrealizedGain.
+- `.negative` - Ярко-красный цвет для отрицательного unrealizedGain.
+- `.pos-light` - Светло-зеленый для положительного currentPosition.
+- `.neg-light` - Светло-красный для отрицательного currentPosition и убытка в логе.
+
+## HTML элементы
+
+- `#log` - Контейнер для отображения лога операций (последние 10).
