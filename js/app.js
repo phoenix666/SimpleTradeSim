@@ -6,7 +6,11 @@ let positionCostBasis = 0;
 let positionMargin = 0;
 let unrealizedGain = 0;
 let spreadValue = 0;
-const MAX_LOG_ENTRIES = 10;
+let slClose = 0;
+const MAX_LOG_ENTRIES = 20;
+
+let lastLogCount = 0;
+let lastLogEntry = null;
 
 function calculateSpread() {
     const emulateSpread = document.getElementById('emulateSpread').checked;
@@ -29,10 +33,24 @@ function calculateSpread() {
 
 function logOperation(action, amount, pnl = 0) {
     const logDiv = document.getElementById('log');
-    const entry = document.createElement('div');
+    
+    if(slClose==0) slClose = candles[lastIndex-1].close;
     const pnlStr = pnl === 0 ? '—' : (pnl > 0 ? `+${Math.round(pnl)}` : Math.round(pnl));
-    entry.innerHTML = `${action}: <span>${Math.round(amount)}</span> | <span class="${pnl > 0 ? 'pos-light' : (pnl < 0 ? 'neg-light' : '')}">${pnlStr}</span>`;
-    logDiv.insertBefore(entry, logDiv.firstChild);
+    const str = `<span class="col-action">${action}:</span><span class="col-amount">${Math.round(amount)}</span><span class="col-price">${slClose.toFixed(maxDecimalDigits)}</span><span class="col-pnl ${pnl > 0 ? 'pos-light' : (pnl < 0 ? 'neg-light' : '')}">${pnlStr}</span><span class="col-count"></span>`;
+    slClose = 0;
+    if(lastLogEntry!==null && str == lastLogEntry)
+    {
+        lastLogCount++;
+        logDiv.firstChild.querySelector('.col-count').textContent = ` *${lastLogCount}`;
+    }
+    else{
+        lastLogEntry = str;
+        const entry = document.createElement('div');
+        entry.innerHTML = str;
+        logDiv.insertBefore(entry, logDiv.firstChild);
+        lastLogCount = 1;
+    }
+    
     while (logDiv.children.length > MAX_LOG_ENTRIES) {
         logDiv.removeChild(logDiv.lastChild);
     }
@@ -145,6 +163,7 @@ function checkStopLimitClose(newCandle, oldClose) {
         
     if (stopLoss > 0 && inRange(stopLoss, oldClose, whatHappenedFirst)) {
         unrealizedGain = currentPosition * (whatHappenedFirst / oldClose) - positionCostBasis*spreadCorrection;
+        slClose = whatHappenedFirst;
         //shadowGain = currentPosition * (whatHappenedFirst / oldClose) - positionCostBasis;
         //console.log(" "+unrealizedGain+" ; "+shadowGain); this was testing in all 4
         closePosition();
@@ -154,6 +173,7 @@ function checkStopLimitClose(newCandle, oldClose) {
     
     if (profitLimit > 0 && inRange(profitLimit, oldClose, whatHappenedFirst)) {
         unrealizedGain = currentPosition * (whatHappenedFirst / oldClose) - positionCostBasis*spreadCorrection;
+        slClose = whatHappenedFirst;
         closePosition();
         updateTradingDisplay();
         return true;
@@ -161,6 +181,7 @@ function checkStopLimitClose(newCandle, oldClose) {
     
     if (stopLoss > 0 && inRange(stopLoss, oldClose, whatHappenedSecond)) {
         unrealizedGain = currentPosition * (whatHappenedSecond / oldClose) - positionCostBasis*spreadCorrection;
+        slClose = whatHappenedSecond;
         closePosition();
         updateTradingDisplay();
         return true;
@@ -168,6 +189,7 @@ function checkStopLimitClose(newCandle, oldClose) {
     
     if (profitLimit > 0 && inRange(profitLimit, oldClose, whatHappenedSecond)) {
         unrealizedGain = currentPosition * (whatHappenedSecond / oldClose) - positionCostBasis*spreadCorrection;
+        slClose = whatHappenedSecond;
         closePosition();
         updateTradingDisplay();
         return true;
@@ -279,7 +301,6 @@ document.getElementById('stepForwardBtn').addEventListener('click', function() {
                 return;
             }
         }
-        
         if (currentPosition !== 0) {
             currentPosition = currentPosition * newClose*(positionSize<0?(1+spreadValue):(1-spreadValue)) / oldClose;
             unrealizedGain = currentPosition - positionCostBasis;

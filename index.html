@@ -36,8 +36,13 @@
         button:disabled { opacity: 0.5; cursor: not-allowed; }
         #chartContainer { margin-top: 20px; }
         canvas { background: #000; display: block; }
-        #log { margin-top: 20px; font-size: 12px; max-height: 200px; overflow-y: auto; }
-        #log div { padding: 2px 0; border-bottom: 1px solid #333; }
+        #log { margin-top: 20px; font-size: 12px; max-height: 200px; overflow-y: auto; font-family: monospace; }
+        #log div { padding: 2px 0; border-bottom: 1px solid #333; display: flex; gap: 10px; }
+        #log .col-action { width: 70px; }
+        #log .col-amount { width: 60px; text-align: right; }
+        #log .col-price { width: 80px; text-align: right; }
+        #log .col-pnl { width: 60px; text-align: right; }
+        #log .col-count { width: 30px; text-align: left; color: #888; }
         #toast {
             position: fixed;
             top: 20px;

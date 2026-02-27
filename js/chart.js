@@ -142,8 +142,8 @@ function render() {
         ctx.fillRect(x - bodyWidth / 2, bodyTop, bodyWidth, bodyHeight);
     }
     
-    const gridStart = range.max + (range.max - range.min) * 0.05;
-    const gridEnd = range.min - (range.max - range.min) * 0.05;
+    const gridStart = range.max;
+    const gridEnd = range.min;
     const gridStep = (gridStart - gridEnd) / (GRID_LINES - 1);
     const chartHeight = canvas.height * (1 - RIGHT_MARGIN);
     const gridX = chartWidth + 10;
@@ -154,7 +154,7 @@ function render() {
     
     for (let i = 0; i < GRID_LINES; i++) {
         const price = gridStart - i * gridStep;
-        const y = ((i+1) / (GRID_LINES)) * chartHeight;
+        const y = priceToY(price, range);
         const formattedPrice = formatPrice(price, maxDecimalDigits);
         
         ctx.strokeStyle = '#333';
