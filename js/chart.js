@@ -114,7 +114,7 @@ function render() {
     const candleWidth = chartWidth / visibleCount;
     const bodyWidth = candleWidth * 0.8;
     const wickWidth = 1;
-    maxDecimalDigits = 0;
+    //maxDecimalDigits = 0;
     for (let i = 0; i < visibleCount; i++) {
         const candle = candles[startIndex + i];
         const x = i * candleWidth + candleWidth / 2;
@@ -126,7 +126,7 @@ function render() {
         const lowY = priceToY(candle.low, range);
         const openY = priceToY(candle.open, range);
         const closeY = priceToY(candle.close, range);
-        maxDecimalDigits = Math.max(maxDecimalDigits, countDecimalDigits(candle.close));
+        //maxDecimalDigits = Math.max(maxDecimalDigits, countDecimalDigits(candle.close));
         
         ctx.strokeStyle = color;
         ctx.lineWidth = wickWidth;
@@ -213,6 +213,31 @@ function render() {
     */
 }
 
+function findMeaningfulDigits()
+{
+    let step = 1;
+    if(lastIndex>1000) step = Math.round(lastIndex/1000);
+    let arr = []
+    for(i = 0;i<lastIndex;i+=step) 
+    {
+        let t = countDecimalDigits(candles[i].close);
+        if(t>8) continue;
+        if(arr[t]===undefined) arr[t] = 1;
+        else arr[t]++;
+    }
+    let max = 0;
+    for(i = 0;i<arr.length;i++)
+    {
+        console.log(" "+i+" "+arr[i]);
+        if(arr[i]===undefined) continue;
+        if(max<arr[i])
+        {
+            max = arr[i];
+            maxDecimalDigits = i;
+        }
+    }
+}
+
 async function loadAndRender() {
     const loading = document.getElementById('loading');
     const loadingText = document.getElementById('loading-text');
@@ -222,7 +247,8 @@ async function loadAndRender() {
     const count = await getCandleCount();
     if (count > 0) {
         candles = await getAllCandles();
-        lastIndex = candles.length;
+        lastIndex = Math.min(CANDLE_COUNT, candles.length);
+        findMeaningfulDigits();
         render();
     }
     

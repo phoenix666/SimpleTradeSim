@@ -288,6 +288,8 @@ document.getElementById('stepForwardBtn').addEventListener('click', function() {
         calculateSpread();
         render();
         updateTradingDisplay();
+    } else {
+        showToast('End of data reached. Hit "Random" to reset position');
     }
 });
 
