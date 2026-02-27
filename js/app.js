@@ -162,9 +162,9 @@ function checkStopLimitClose(newCandle, oldClose) {
     let spreadCorrection = (currentPosition<0?(1-spreadValue):(1+spreadValue)); //seems right after testing
         
     if (stopLoss > 0 && inRange(stopLoss, oldClose, whatHappenedFirst)) {
-        unrealizedGain = currentPosition * (whatHappenedFirst / oldClose) - positionCostBasis*spreadCorrection;
-        slClose = whatHappenedFirst;
-        //shadowGain = currentPosition * (whatHappenedFirst / oldClose) - positionCostBasis;
+        unrealizedGain = currentPosition * (stopLoss / oldClose) - positionCostBasis*spreadCorrection;
+        slClose = stopLoss;
+        //shadowGain = currentPosition * (stopLoss / oldClose) - positionCostBasis;
         //console.log(" "+unrealizedGain+" ; "+shadowGain); this was testing in all 4
         closePosition();
         updateTradingDisplay();
@@ -172,24 +172,24 @@ function checkStopLimitClose(newCandle, oldClose) {
     }
     
     if (profitLimit > 0 && inRange(profitLimit, oldClose, whatHappenedFirst)) {
-        unrealizedGain = currentPosition * (whatHappenedFirst / oldClose) - positionCostBasis*spreadCorrection;
-        slClose = whatHappenedFirst;
+        unrealizedGain = currentPosition * (profitLimit / oldClose) - positionCostBasis*spreadCorrection;
+        slClose = profitLimit;
         closePosition();
         updateTradingDisplay();
         return true;
     }
     
     if (stopLoss > 0 && inRange(stopLoss, oldClose, whatHappenedSecond)) {
-        unrealizedGain = currentPosition * (whatHappenedSecond / oldClose) - positionCostBasis*spreadCorrection;
-        slClose = whatHappenedSecond;
+        unrealizedGain = currentPosition * (stopLoss / oldClose) - positionCostBasis*spreadCorrection;
+        slClose = stopLoss;
         closePosition();
         updateTradingDisplay();
         return true;
     }
     
     if (profitLimit > 0 && inRange(profitLimit, oldClose, whatHappenedSecond)) {
-        unrealizedGain = currentPosition * (whatHappenedSecond / oldClose) - positionCostBasis*spreadCorrection;
-        slClose = whatHappenedSecond;
+        unrealizedGain = currentPosition * (profitLimit / oldClose) - positionCostBasis*spreadCorrection;
+        slClose = profitLimit;
         closePosition();
         updateTradingDisplay();
         return true;
