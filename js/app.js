@@ -252,8 +252,34 @@ async function init() {
     console.log('IndexedDB инициализирована');
     await updateButtonState();
     await loadAndRender();
+    loadSettings();
     updateTradingDisplay();
 }
+
+function loadSettings() {
+    const useSl = localStorage.getItem('tradeSimUseSl');
+    const emulateSpread = localStorage.getItem('tradeSimEmulateSpread');
+    const leverage = localStorage.getItem('tradeSimLeverage');
+    if (useSl !== null) {
+        document.getElementById('useSl').checked = useSl === 'true';
+    }
+    if (emulateSpread !== null) {
+        document.getElementById('emulateSpread').checked = emulateSpread === 'true';
+    }
+    if (leverage !== null) {
+        document.getElementById('leverageSelect').value = leverage;
+        leverage = parseInt(leverage);
+    }
+    calculateSpread();
+}
+
+function saveSettings() {
+    localStorage.setItem('tradeSimUseSl', document.getElementById('useSl').checked);
+    localStorage.setItem('tradeSimEmulateSpread', document.getElementById('emulateSpread').checked);
+    localStorage.setItem('tradeSimLeverage', document.getElementById('leverageSelect').value);
+}
+
+window.addEventListener('beforeunload', saveSettings);
 
 init();
 
@@ -302,8 +328,8 @@ document.getElementById('stepForwardBtn').addEventListener('click', function() {
             }
         }
         if (currentPosition !== 0) {
-            currentPosition = currentPosition * newClose*(positionSize<0?(1+spreadValue):(1-spreadValue)) / oldClose;
-            unrealizedGain = currentPosition - positionCostBasis;
+            currentPosition = currentPosition * newClose/ oldClose;
+            unrealizedGain = currentPosition - positionCostBasis*(currentPosition<0?(1-spreadValue):(1+spreadValue));
         }
         
         calculateSpread();
@@ -321,6 +347,7 @@ document.getElementById('leverageSelect').addEventListener('change', function() 
 
 document.getElementById('emulateSpread').addEventListener('change', function() {
     calculateSpread();
+    saveSettings();
 });
 
 document.getElementById('positionSizeInput').addEventListener('input', function() {
@@ -407,11 +434,15 @@ document.getElementById('closeHalfBtn').addEventListener('click', function() {
 });
 
 document.getElementById('useSl').addEventListener('change', function() {
-    if (!this.checked) {
-        stopLoss = 0;
-        profitLimit = 0;
-        clearStopLimit();
-    }
-    render();
+	if (!this.checked) {
+		stopLoss = 0;
+		profitLimit = 0;
+		clearStopLimit();
+	}
+	render();
+	saveSettings();
 });
+
+document.getElementById('hotkeySettingsBtn').addEventListener('click', toggleSettingsModal);
+
 console.log("app.js loaded");
