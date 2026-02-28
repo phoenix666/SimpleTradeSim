@@ -114,7 +114,6 @@ function render() {
     const candleWidth = chartWidth / visibleCount;
     const bodyWidth = candleWidth * 0.8;
     const wickWidth = 1;
-    //maxDecimalDigits = 0;
     for (let i = 0; i < visibleCount; i++) {
         const candle = candles[startIndex + i];
         const x = i * candleWidth + candleWidth / 2;
@@ -126,7 +125,6 @@ function render() {
         const lowY = priceToY(candle.low, range);
         const openY = priceToY(candle.open, range);
         const closeY = priceToY(candle.close, range);
-        //maxDecimalDigits = Math.max(maxDecimalDigits, countDecimalDigits(candle.close));
         
         ctx.strokeStyle = color;
         ctx.lineWidth = wickWidth;
@@ -171,6 +169,26 @@ function render() {
         ctx.textAlign = 'left';
         ctx.fillText(formattedPrice, gridX+10, y + 4);
     }
+    if (entryPrice > 0) {
+      const entryY = priceToY(entryPrice, range);
+      const isLong = currentPosition > 0;
+      const color = isLong ? '#0f0' : '#f00';
+      
+      // риска
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(chartWidth, entryY);
+      ctx.lineTo(chartWidth+30, entryY);
+      ctx.stroke();
+      
+      // треугольник
+      ctx.fillStyle = color;
+      ctx.font = '30px monospace';
+      ctx.textAlign = 'left';
+      if(isLong) ctx.fillText('▲', chartWidth+5, entryY + 20);
+      else ctx.fillText('▼', chartWidth+5, entryY - 5);
+  }
 
     if (stopLoss > 0) {
         const stopY = priceToY(stopLoss, range);

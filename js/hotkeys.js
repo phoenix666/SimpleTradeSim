@@ -10,7 +10,13 @@ const defaultHotkeys = {
     settings: 'h'
 };
 
+const defaultSettings = {
+    cashBalance: 10000,
+    positionSize: 50000
+};
+
 let hotkeys = { ...defaultHotkeys };
+let defaultParams = { ...defaultSettings };
 
 function loadHotkeys() {
     const saved = localStorage.getItem('tradeSimHotkeys');
@@ -23,8 +29,27 @@ function loadHotkeys() {
     }
 }
 
+function loadDefaultParams() {
+    const saved = localStorage.getItem('tradeSimSettings');
+    if (saved) {
+        try {
+            defaultParams = JSON.parse(saved);
+        } catch (e) {
+            defaultParams = { ...defaultSettings };
+        }
+    }
+}
+
 function saveHotkeys() {
     localStorage.setItem('tradeSimHotkeys', JSON.stringify(hotkeys));
+}
+
+function saveDefaultParams() {
+    localStorage.setItem('tradeSimSettings', JSON.stringify(defaultParams));
+}
+
+function getDefaultSettings() {
+    return { ...defaultParams };
 }
 
 function getStepSize() {
@@ -94,6 +119,7 @@ function toggleSettingsModal() {
         }
     } else {
         createSettingsModal();
+        document.getElementById('hotkeyModal').style.display = 'flex';
     }
 }
 
@@ -171,6 +197,110 @@ function createSettingsModal() {
     renderHotkeyInputs();
 }
 
+function toggleDefaultsModal() {
+    let modal = document.getElementById('defaultsModal');
+    if (modal) {
+        if (modal.style.display === 'flex') {
+            modal.style.display = 'none';
+        } else {
+            document.getElementById('defaultCashBalance').value = defaultParams.cashBalance;
+            document.getElementById('defaultPositionSize').value = defaultParams.positionSize;
+            modal.style.display = 'flex';
+        }
+    } else {
+        createDefaultsModal();
+        document.getElementById('defaultsModal').style.display = 'flex';
+    }
+}
+
+function createDefaultsModal() {
+    const modal = document.createElement('div');
+    modal.id = 'defaultsModal';
+    modal.innerHTML = `
+        <div class="defaults-overlay" onclick="if(event.target === this) toggleDefaultsModal()">
+            <div class="defaults-content">
+                <h3>Default Values</h3>
+                <div class="defaults-row">
+                    <label>Cash Balance</label>
+                    <input type="number" id="defaultCashBalance" value="${defaultParams.cashBalance}" min="1">
+                </div>
+                <div class="defaults-row">
+                    <label>Position Size</label>
+                    <input type="number" id="defaultPositionSize" value="${defaultParams.positionSize}" min="1">
+                </div>
+                <div class="defaults-buttons">
+                    <button id="resetDefaultsBtn">Reset</button>
+                    <button id="saveDefaultsBtn">Save</button>
+                    <button id="closeDefaultsBtn">Close</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    const style = document.createElement('style');
+    style.textContent = `
+        .defaults-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 3000;
+        }
+        .defaults-content {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            min-width: 250px;
+        }
+        .defaults-content h3 {
+            margin: 0 0 15px 0;
+            text-align: center;
+        }
+        .defaults-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .defaults-row label { font-size: 14px; }
+        .defaults-row input {
+            width: 100px;
+            padding: 5px;
+            text-align: center;
+            background: #1a1a1a;
+            color: #ddd;
+            border: 1px solid #444;
+        }
+        .defaults-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+        }
+        .defaults-buttons button {
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+    `;
+    document.head.appendChild(style);
+
+    document.getElementById('resetDefaultsBtn').addEventListener('click', function() {
+        defaultParams = { ...defaultSettings };
+        document.getElementById('defaultCashBalance').value = defaultParams.cashBalance;
+        document.getElementById('defaultPositionSize').value = defaultParams.positionSize;
+    });
+
+    document.getElementById('saveDefaultsBtn').addEventListener('click', function() {
+        const cashVal = parseInt(document.getElementById('defaultCashBalance').value, 10);
+        const posVal = parseInt(document.getElementById('defaultPositionSize').value, 10);
+        defaultParams.cashBalance = cashVal > 0 ? cashVal : defaultSettings.cashBalance;
+        defaultParams.positionSize = posVal > 0 ? posVal : defaultSettings.positionSize;
+        saveDefaultParams();
+    });
+
+    document.getElementById('closeDefaultsBtn').addEventListener('click', toggleDefaultsModal);
+}
+
 function renderHotkeyInputs() {
     const list = document.getElementById('hotkeyList');
     const labels = {
@@ -206,7 +336,11 @@ function renderHotkeyInputs() {
 
 function initHotkeys() {
     loadHotkeys();
+    loadDefaultParams();
     document.addEventListener('keydown', handleHotkey);
+    if (typeof applyDefaultSettings === 'function') {
+        applyDefaultSettings();
+    }
 }
 
 if (document.readyState === 'loading') {

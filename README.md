@@ -2,7 +2,7 @@
 
 English | [Russian](#russian)
 
-A highly simplified stock trading simulator. Load and visualize candlesticks in a browser with the ability to open positions, set stop-loss and take-profit. Run in a browser on PC, it will be inconvenient on mobile. No data is provided, load CSV/TXT files with Open-High-Low-Close data from your local device. There must be at least these 4 consecutive columns in the correct order. Others are ignored. Rows must already be sorted by date ascending (oldest first), the script cannot reorder them. The script does not account for margin call, sudden gaps with no liquidity, limits that don't trigger when they should, stops that trigger when they shouldn't, commissions, and other real trading nuances. Only the main concept works with a simplified algorithm, but it's simple to manage, fast, and requires no registration.
+A highly simplified stock trading simulator. Load and visualize candlesticks in a browser with the ability to open positions, set stop-loss and take-profit. Run in a browser on PC, it will be inconvenient on mobile. No data is provided, load CSV/TXT files with Open-High-Low-Close data from your local device. There must be at least these 4 consecutive columns in the correct order. Others are ignored. Rows must already be sorted by date ascending (oldest first), the script cannot reorder them. The script does not account for sudden gaps with no liquidity, limits that don't trigger when they should, stops that trigger when they shouldn't, commissions, and other real trading nuances. Only the main concept works with a simplified algorithm, but it's simple to manage, fast, and requires no registration.
 
 ## Running
 
@@ -60,7 +60,7 @@ API.md       # API documentation
 
 <a name="russian"></a>
 
-Очень упрощенный симулятор биржевой торговли. Загрузка и визуализация свечей в браузере с возможностью открытия позиций, установки стоп-лосса и тейк-профита. Запускать в браузере на PC, на телефоне будет неудобно. Данные не предоставляются, загружайте с локального устройства csv/txt файлы с Open-High-Low-Close данными. Должны быть как минимум эти 4 последовательных колонки в правильном порядке. Остальные игнорируются. Строки должны быть уже отсортированы по возрастанию даты (от старого в начале к новому в конце), скрипт не умеет менять их порядок. Скрипт не учитывает margin call, резкие скачки с отсутствием ликвидности, несрабатывающие когда надо лимиты, срабатывающие когда не надо стопы, комиссии,  и прочие нюансы реального трейдинга. Работает только основной концепт по упрощенному алгоритму, зато просто в управлении, быстро и без регистраций. 
+Очень упрощенный симулятор биржевой торговли. Загрузка и визуализация свечей в браузере с возможностью открытия позиций, установки стоп-лосса и тейк-профита. Запускать в браузере на PC, на телефоне будет неудобно. Данные не предоставляются, загружайте с локального устройства csv/txt файлы с Open-High-Low-Close данными. Должны быть как минимум эти 4 последовательных колонки в правильном порядке. Остальные игнорируются. Строки должны быть уже отсортированы по возрастанию даты (от старого в начале к новому в конце), скрипт не умеет менять их порядок. Скрипт не учитывает резкие скачки с отсутствием ликвидности, несрабатывающие когда надо лимиты, срабатывающие когда не надо стопы, комиссии,  и прочие нюансы реального трейдинга. Работает только основной концепт по упрощенному алгоритму, зато просто в управлении, быстро и без регистраций. 
 
 ## Запуск
 

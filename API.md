@@ -26,7 +26,7 @@
 - `yToPrice(y, range)` - Конвертирует Y-координату в цену. Обратная к priceToY. Возвращает число.
 - `countDecimalDigits(num)` - Считает количество знаков после запятой. Возвращает число.
 - `formatPrice(value, num)` - Форматирует число в строку с `num` знаками после запятой (дополняет нулями). Возвращает строку.
-- `render()` - Основная функция отрисовки графика на canvas. Включает отрисовку линий stopLoss (красная пунктирная) и profitLimit (зеленая пунктирная). Значения отображаются на линиях в последней трети графика.
+- `render()` - Основная функция отрисовки графика на canvas. Включает отрисовку линий stopLoss (красная пунктирная) и profitLimit (зеленая пунктирная). Значения отображаются на линиях в последней трети графика. Также отображает линию цены входа (entryPrice): зеленая горизонтальная линия с треугольником ▲ для long, красная с треугольником ▼ для short.
 - `loadAndRender()` - Загружает свечи из БД и рендерит график. Асинхронная. Показывает индикатор "Preparing data..." во время загрузки.
 - `onCandlesLoaded(count)` - Коллбэк, вызывается после загрузки свечей. Перезапускает `loadAndRender()`, обновляет состояние кнопок через `updateButtonState()` и торговый дисплей.
 - `setStopLimit(stop, limit)` - Устанавливает значения stopLoss и profitLimit. `stop` - цена стоп-лосса, `limit` - цена тейк-профита. После установки перерисовывает график.
@@ -37,24 +37,26 @@
 ## app.js (Приложение)
 
 - `updateTradingDisplay()` - Обновляет отображение CashBalance, CurrentPosition и UnrealizedGain на странице. CurrentPosition окрашивается: положительный - светло-зеленый, отрицательный - светло-красный.
+- `applyDefaultSettings()` - Применяет сохраненные настройки по умолчанию (cashBalance, positionSize) при запуске приложения. Использует `getDefaultSettings()` из hotkeys.js.
 - `getMaxHlRange()` - Вычисляет максимальный диапазон high-low среди видимых свечей. Возвращает число.
 - `initStopLimit(isLong)` - Инициализирует stopLoss и profitLimit на основе текущей цены и волатильности. `isLong` - true для длинной позиции, false для короткой. Использует #useSl чекбокс.
 - `validatePositionSize()` - Проверяет, что PositionSize не превышает 0.8 * CashBalance * Leverage. Если превышает - корректирует в меньшую сторону.
-- `increasePosition(marginSize, positionSize)` - Увеличивает позицию: вычитает маржу из cashBalance, добавляет amount к currentPosition, обновляет positionMargin и positionCostBasis. Логирует операцию.
-- `closePosition(partSize)` - Закрывает позицию полностью или частично. При закрытии возвращает маржу + PnL в cashBalance, сбрасывает stopLoss и profitLimit в 0. Логирует операцию с размером закрытия и PnL.
+- `increasePosition(marginSize, positionSize)` - Увеличивает позицию: вычитает маржу из cashBalance, добавляет amount к currentPosition, обновляет positionMargin и positionCostBasis. При открытии новой позиции записывает цену входа в `entryPrice`. Логирует операцию.
+- `closePosition(partSize)` - Закрывает позицию полностью или частично. При полном закрытии сбрасывает `entryPrice` в 0. При закрытии возвращает маржу + PnL в cashBalance, сбрасывает stopLoss и profitLimit в 0. Логирует операцию с размером закрытия и PnL.
 - `checkStopLimitClose(newCandle, oldClose)` - Проверяет, достигла ли цена стопа или лимита при переходе к новой свече. `newCandle` - объект {open, high, low, close} новой свечи, `oldClose` - цена закрытия предыдущей свечи. Определяет, что было первым (high или low), проверяет диапазоны. При срабатывании стопа/лимита рассчитывает unrealizedGain и вызывает closePosition(). Возвращает true если закрытие произошло.
+- `checkMarginCall(newCandle, previousClose)` - Проверяет необходимость ликвидации позиции по margin call. Если баланс (cashBalance + unrealizedGain) становится отрицательным - закрывает позицию и показывает toast "The position was liquidated due to a margin call.". Возвращает true если произошла ликвидация.
 - `logOperation(action, amount, pnl)` - Записывает операцию в лог. `action` - тип операции (Long/Short/Close/Partial close), `amount` - количество актива, `pnl` - финансовый результат (0 если позиция только открыта). PnL окрашивается: прибыль - зеленый, убыток - красный.
 - `updateButtonState()` - Обновляет состояние кнопки "Очистить базу" (disabled если свечей нет). Возвращает количество свечей.
 - `calculateSpread()` - Пересчитывает spreadValue на основе последних 20 видимых свечей. Формула: среднее(high - low) * 0.05. Если чекбокс #emulateSpread не отмечен - устанавливает spreadValue = 0.
 - `adjustPositionSize(direction)` - Изменяет positionSize на старший разряд. `direction` > 0 увеличивает, < 0 уменьшает. При уменьшении ниже 1 переходит к старшему разряду минус 1 (например 1000 → 900).
-- `init()` - Инициализация приложения: открывает БД, обновляет состояние кнопок, загружает данные, восстанавливает настройки из localStorage.
+- `init()` - Инициализация приложения: открывает БД, обновляет состояние кнопок, загружает данные, восстанавливает настройки из localStorage, применяет настройки по умолчанию.
 - `loadSettings()` - Восстанавливает состояние чекбоксов useSl, emulateSpread и селектора leverage из localStorage. Вызывает calculateSpread().
 - `saveSettings()` - Сохраняет состояние чекбоксов useSl, emulateSpread и селектора leverage в localStorage. Вызывается при изменении элементов и при beforeunload.
 - Обработчики событий:
   - `fileInput.change` - Запускает загрузку свечей при выборе файла.
   - `clearBtn.click` - Очищает базу и сбрасывает график.
-  - `randomBtn.click` - Устанавливает случайный lastIndex, сбрасывает торговые переменные в начальные значения, очищает stopLoss/profitLimit и пересчитывает spread.
-  - `stepForwardBtn.click` - Увеличивает lastIndex на 1, пересчитывает позицию пропорционально изменению цены. При наличии стопа/лимита проверяет их срабатывание через checkStopLimitClose. Пересчитывает spread.
+  - `randomBtn.click` - Устанавливает случайный lastIndex, сбрасывает торговые переменные в начальные значения (используя настройки по умолчанию), очищает stopLoss/profitLimit и пересчитывает spread.
+  - `stepForwardBtn.click` - Увеличивает lastIndex на 1, пересчитывает позицию пропорционально изменению цены. При наличии позиции проверяет margin call через checkMarginCall. При наличии стопа/лимита проверяет их срабатывание через checkStopLimitClose. Пересчитывает spread.
   - `leverageSelect.change` - Обновляет leverage и валидирует PositionSize.
   - `positionSizeInput.input` - Обновляет positionSize и валидирует его.
   - `positionSizeInput.keydown` - При нажатии ArrowUp/ArrowDown меняет значение на старший разряд.
@@ -62,10 +64,11 @@
   - `posSizeDown.click` - Уменьшает positionSize на старший разряд.
   - `useSl.change` - При снятии галочки сбрасывает stopLoss/profitLimit и очищает линии на графике.
   - `emulateSpread.change` - Пересчитывает spread при изменении чекбокса.
-  - `buyBtn.click` - Если позиции нет - открывает длинную (long). Если есть короткая - закрывает её.
+  - `buyBtn.click` - Если позиции нет - открывает длинную (long). Если есть коротшая - закрывает её.
   - `sellBtn.click` - Если позиции нет - открывает короткую (short). Если есть длинная - закрывает её.
   - `closeHalfBtn.click` - Закрывает 50% текущей позиции.
   - `hotkeySettingsBtn.click` - Открывает модальное окно настроек горячих клавиш.
+  - `defaultSettingsLink.click` - Открывает модальное окно настроек по умолчанию.
 
 ## Глобальные переменные
 
@@ -92,6 +95,7 @@
 - `unrealizedGain` - Нереализованная прибыль или убыток.
 - `spreadValue` - Значение спреда для эмуляции (0 если #emulateSpread не отмечен).
 - `slClose` - Цена закрытия по стопу или лимиту для записи в лог.
+- `entryPrice` - Цена входа в текущую позицию (0 если позиции нет).
 - `MAX_LOG_ENTRIES` - Максимальное количество записей в логе операций (20).
 - `lastLogCount` - Счетчик повторяющихся операций для группировки ( *N ).
 - `lastLogEntry` - Хранит HTML последней записи для сравнения.
@@ -120,6 +124,7 @@
 - `#toast` - Всплывающее сообщение об ошибке. Красный прямоугольник сверху по центру.
 - `#posSizeUp`, `#posSizeDown` - Кнопки для изменения positionSize на старший разряд.
 - `#hotkeySettingsBtn` - Кнопка для открытия модального окна настроек горячих клавиш.
+- `#cashBalanceDisplay` - Отображает текущий баланс. Является частью ссылки, по клику открывается модальное окно настроек по умолчанию.
 
 ## hotkeys.js (Горячие клавиши)
 
@@ -133,19 +138,28 @@
   - `stopUp`: ';' - Поднять Stop
   - `stopDown`: '.' - Опустить Stop
   - `settings`: 'h' - Открыть настройки
+- `defaultSettings` - Объект с настройками по умолчанию:
+  - `cashBalance`: 10000
+  - `positionSize`: 50000
+- `defaultParams` - Текущие настройки (могут быть изменены пользователем).
 - `loadHotkeys()` - Загружает горячие клавиши из localStorage. При отсутствии использует defaults.
+- `loadDefaultParams()` - Загружает настройки по умолчанию (cashBalance, positionSize) из localStorage. При отсутствии использует defaults.
 - `saveSettings()` - Сохраняет текущие горячие клавиши в localStorage.
+- `saveDefaultParams()` - Сохраняет текущие настройки в localStorage под ключом `tradeSimSettings`.
+- `getDefaultSettings()` - Возвращает копию текущих настроек {cashBalance, positionSize}.
 - `getStepSize()` - Вычисляет шаг изменения цены для стопа/лимита (1% от текущего диапазона цен на графике).
 - `moveStop(direction)` - Перемещает stopLoss на шаг вверх (direction > 0) или вниз (direction < 0).
 - `moveLimit(direction)` - Перемещает profitLimit на шаг вверх (direction > 0) или вниз (direction < 0).
 - `closeFullPosition()` - Полностью закрывает текущую позицию.
 - `handleHotkey(e)` - Обрабатывает нажатия клавиш. Игнорирует ввод в INPUT/SELECT/TEXTAREA.
-- `toggleSettingsModal()` - Показывает/скрывает модальное окно настроек горячих клавиш.
+- `toggleSettingsModal()` - Показывает/скрывает модальное окно настроек горячих клавиш. При отсутствии модального окна создает и открывает его.
 - `createSettingsModal()` - Создает модальное окно с настройками (создается один раз).
+- `toggleDefaultsModal()` - Показывает/скрывает модальное окно настроек по умолчанию (Cash Balance, Position Size).
+- `createDefaultsModal()` - Создает модальное окно настроек по умолчанию (создается один раз). Включает поля для ввода Cash Balance и Position Size, кнопки Reset, Save, Close.
 - `renderHotkeyInputs()` - Обновляет поля ввода в модальном окне текущими значениями горячих клавиш.
-- `initHotkeys()` - Инициализирует модуль: загружает настройки и подключает обработчик keydown.
+- `initHotkeys()` - Инициализирует модуль: загружает настройки, загружает параметры по умолчанию, подключает обработчик keydown, применяет настройки по умолчанию.
 
-Модальное окно создается динамически при первом открытии. Настройки сохраняются в localStorage под ключом `tradeSimHotkeys`.
+Модальные окна создаются динамически при первом открытии. Настройки горячих клавиш сохраняются в localStorage под ключом `tradeSimHotkeys`, настройки по умолчанию - под ключом `tradeSimSettings`.
 
 ## localStorage
 
@@ -154,3 +168,4 @@
 - `tradeSimEmulateSpread` - Состояние чекбокса Emulate spread ('true' или 'false').
 - `tradeSimLeverage` - Значение селектора leverage (число в виде строки).
 - `tradeSimHotkeys` - JSON-объект с пользовательскими горячими клавишами.
+- `tradeSimSettings` - JSON-объект с пользовательскими настройками по умолчанию {cashBalance, positionSize}.

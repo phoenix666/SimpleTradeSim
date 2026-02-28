@@ -7,7 +7,18 @@ let positionMargin = 0;
 let unrealizedGain = 0;
 let spreadValue = 0;
 let slClose = 0;
+let entryPrice = 0;
 const MAX_LOG_ENTRIES = 20;
+
+function applyDefaultSettings() {
+    if (typeof getDefaultSettings === 'function') {
+        const defaults = getDefaultSettings();
+        cashBalance = defaults.cashBalance;
+        positionSize = defaults.positionSize;
+        document.getElementById('cashBalanceDisplay').textContent = Math.round(cashBalance);
+        document.getElementById('positionSizeInput').value = positionSize;
+    }
+}
 
 let lastLogCount = 0;
 let lastLogEntry = null;
@@ -128,6 +139,7 @@ function validatePositionSize() {
 function increasePosition(marginSize,positionSize)
 {
     if (marginSize > cashBalance) return;
+    if(entryPrice==0) entryPrice = candles[lastIndex-1].close;
     const wasZero = currentPosition === 0;
     cashBalance -= marginSize;
     currentPosition += positionSize;
@@ -198,17 +210,43 @@ function checkStopLimitClose(newCandle, oldClose) {
     return false;
 }
 
+function checkMarginCall(newCandle, previousClose) {
+    if (currentPosition === 0) {
+        return false;
+    }
+
+    const { high, low } = newCandle;
+    
+    const checkPrice = (price) => {
+        const tGain = currentPosition*(price/previousClose) - positionCostBasis;
+        if (cashBalance + tGain < 0) {
+            unrealizedGain = tGain;
+            closePosition();
+            updateTradingDisplay();
+            showToast("The position was liquidated due to a margin call.");
+            return true;
+        }
+        return false;
+    };
+
+    if (checkPrice(high)) return true;
+    if (checkPrice(low)) return true;
+    
+    return false;
+}
+
 function closePosition(partSize = 0) {
     if (currentPosition === 0 || positionMargin <= 0) {
         return;
     }
-
+    
     const isLong  = currentPosition > 0;
     const absPos  = Math.abs(currentPosition);
     let closedPnl = 0;
 
     if (partSize == 0 || partSize >= absPos) {
         // Полное закрытие
+        entryPrice = 0;
         closedPnl = unrealizedGain;
         cashBalance += positionMargin + unrealizedGain;
         currentPosition   = 0;
@@ -259,16 +297,16 @@ async function init() {
 function loadSettings() {
     const useSl = localStorage.getItem('tradeSimUseSl');
     const emulateSpread = localStorage.getItem('tradeSimEmulateSpread');
-    const leverage = localStorage.getItem('tradeSimLeverage');
+    const leverageVal = localStorage.getItem('tradeSimLeverage');
     if (useSl !== null) {
         document.getElementById('useSl').checked = useSl === 'true';
     }
     if (emulateSpread !== null) {
         document.getElementById('emulateSpread').checked = emulateSpread === 'true';
     }
-    if (leverage !== null) {
-        document.getElementById('leverageSelect').value = leverage;
-        leverage = parseInt(leverage);
+    if (leverageVal !== null) {
+        document.getElementById('leverageSelect').value = leverageVal;
+        leverage = parseInt(leverageVal);
     }
     calculateSpread();
 }
@@ -302,12 +340,14 @@ document.getElementById('randomBtn').addEventListener('click', function() {
     if (candles.length > 0) {
         const minIndex = Math.min(20, candles.length);
         lastIndex = Math.floor(Math.random() * (candles.length - minIndex + 1)) + minIndex;
-        cashBalance = 10000;
-        positionSize = 50000;
+        const defaults = typeof getDefaultSettings === 'function' ? getDefaultSettings() : { cashBalance: 10000, positionSize: 50000 };
+        cashBalance = defaults.cashBalance;
+        positionSize = defaults.positionSize;
         currentPosition = 0;
         positionCostBasis = 0;
         positionMargin = 0;
         clearStopLimit();
+        document.getElementById('cashBalanceDisplay').textContent = Math.round(cashBalance);
         document.getElementById('positionSizeInput').value = positionSize;
         calculateSpread();
         render();
@@ -318,6 +358,7 @@ document.getElementById('randomBtn').addEventListener('click', function() {
 document.getElementById('stepForwardBtn').addEventListener('click', function() {
     if (candles.length > 0 && lastIndex < candles.length) {
         const oldClose = candles[lastIndex-1].close;
+        const previousClose = lastIndex >= 2 ? candles[lastIndex-2].close : oldClose;
         lastIndex++;
         const newCandle = candles[lastIndex-1];
         const newClose = newCandle.close; 
@@ -327,7 +368,14 @@ document.getElementById('stepForwardBtn').addEventListener('click', function() {
                 return;
             }
         }
+        
         if (currentPosition !== 0) {
+            if (checkMarginCall(newCandle, previousClose)) {
+                calculateSpread();
+                render();
+                updateTradingDisplay();
+                return;
+            }
             currentPosition = currentPosition * newClose/ oldClose;
             unrealizedGain = currentPosition - positionCostBasis*(currentPosition<0?(1-spreadValue):(1+spreadValue));
         }
@@ -444,5 +492,14 @@ document.getElementById('useSl').addEventListener('change', function() {
 });
 
 document.getElementById('hotkeySettingsBtn').addEventListener('click', toggleSettingsModal);
+
+document.getElementById('defaultSettingsLink').addEventListener('click', function(e) {
+    e.preventDefault();
+    toggleDefaultsModal();
+});
+
+if (typeof applyDefaultSettings === 'function') {
+    applyDefaultSettings();
+}
 
 console.log("app.js loaded");
