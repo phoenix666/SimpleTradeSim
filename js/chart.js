@@ -151,7 +151,7 @@ function render() {
     ctx.textAlign = 'left';
     
     for (let i = 0; i < GRID_LINES; i++) {
-        const price = gridStart - i * gridStep;
+        const price = gridStart - i * gridStep - gridStep/2;
         const y = priceToY(price, range);
         const formattedPrice = formatPrice(price, maxDecimalDigits);
         

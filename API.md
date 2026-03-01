@@ -59,9 +59,9 @@
   - `stepForwardBtn.click` - Увеличивает lastIndex на 1, пересчитывает позицию пропорционально изменению цены. При наличии позиции проверяет margin call через checkMarginCall. При наличии стопа/лимита проверяет их срабатывание через checkStopLimitClose. Пересчитывает spread.
   - `leverageSelect.change` - Обновляет leverage и валидирует PositionSize.
   - `positionSizeInput.input` - Обновляет positionSize и валидирует его.
-  - `positionSizeInput.keydown` - При нажатии ArrowUp/ArrowDown меняет значение на старший разряд.
-  - `posSizeUp.click` - Увеличивает positionSize на старший разряд.
-  - `posSizeDown.click` - Уменьшает positionSize на старший разряд.
+  - `positionSizeInput.keydown` - При нажатии ArrowUp/ArrowDown меняет значение в 2 раза.
+  - `posSizeUp.click` - Увеличивает positionSize в 2 раза.
+  - `posSizeDown.click` - Уменьшает positionSize в 2 раза.
   - `useSl.change` - При снятии галочки сбрасывает stopLoss/profitLimit и очищает линии на графике.
   - `emulateSpread.change` - Пересчитывает spread при изменении чекбокса.
   - `buyBtn.click` - Если позиции нет - открывает длинную (long). Если есть коротшая - закрывает её.

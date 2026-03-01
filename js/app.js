@@ -412,22 +412,13 @@ document.getElementById('positionSizeInput').addEventListener('keydown', functio
 
 function adjustPositionSize(direction) {
     const input = document.getElementById('positionSizeInput');
-    let val = parseInt(input.value) || 0;
-    const str = val.toString();
-    const firstDigit = parseInt(str[0]);
+    let val = parseInt(input.value) || 1;
     
     if (direction > 0) {
-        if (firstDigit < 9) {
-            val = (firstDigit + 1) * Math.pow(10, str.length - 1);
-        } else {
-            val = parseInt('1' + '0'.repeat(str.length));
-        }
+        val = val * 2;
     } else {
-        if (firstDigit > 1) {
-            val = (firstDigit - 1) * Math.pow(10, str.length - 1);
-        } else {
-            val = 9 * Math.pow(10, str.length - 2);
-        }
+        val = Math.floor(val / 2);
+        if (val < 1) val = 1;
     }
     
     input.value = val;
