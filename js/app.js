@@ -15,8 +15,8 @@ function applyDefaultSettings() {
         const defaults = getDefaultSettings();
         cashBalance = defaults.cashBalance;
         positionSize = defaults.positionSize;
-        document.getElementById('cashBalanceDisplay').textContent = Math.round(cashBalance);
-        document.getElementById('positionSizeInput').value = positionSize;
+        document.getElementById('cashBalanceDisplay').textContent = shortFloat(cashBalance);
+        document.getElementById('positionSizeInput').value = shortFloat(positionSize);
     }
 }
 
@@ -46,8 +46,8 @@ function logOperation(action, amount, pnl = 0) {
     const logDiv = document.getElementById('log');
     
     if(slClose==0) slClose = candles[lastIndex-1].close;
-    const pnlStr = pnl === 0 ? '—' : (pnl > 0 ? `+${Math.round(pnl)}` : Math.round(pnl));
-    const str = `<span class="col-action">${action}:</span><span class="col-amount">${Math.round(amount)}</span><span class="col-price">${slClose.toFixed(maxDecimalDigits)}</span><span class="col-pnl ${pnl > 0 ? 'pos-light' : (pnl < 0 ? 'neg-light' : '')}">${pnlStr}</span><span class="col-count"></span>`;
+    const pnlStr = pnl === 0 ? '—' : (pnl > 0 ? `+${shortFloat(pnl)}` : shortFloat(pnl));
+    const str = `<span class="col-action">${action}:</span><span class="col-amount">${shortFloat(amount)}</span><span class="col-price">${slClose.toFixed(maxDecimalDigits)}</span><span class="col-pnl ${pnl > 0 ? 'pos-light' : (pnl < 0 ? 'neg-light' : '')}">${pnlStr}</span><span class="col-count"></span>`;
     slClose = 0;
     if(lastLogEntry!==null && str == lastLogEntry)
     {
@@ -92,10 +92,10 @@ function initStopLimit(isLong) {
 }
 
 function updateTradingDisplay() {
-    document.getElementById('cashBalanceDisplay').textContent = Math.round(cashBalance);
+    document.getElementById('cashBalanceDisplay').textContent = shortFloat(cashBalance);
     
     const posDisplay = document.getElementById('currentPositionDisplay');
-    posDisplay.textContent = Math.round(currentPosition);
+    posDisplay.textContent = shortFloat(currentPosition);
     if (currentPosition > 0) {
         posDisplay.className = 'pos-light';
     } else if (currentPosition < 0) {
@@ -107,7 +107,7 @@ function updateTradingDisplay() {
     const gainDisplay = document.getElementById('unrealizedGainDisplay');
     if (currentPosition != 0 && lastIndex > 0) {
         const currentPrice = candles[lastIndex - 1].close;
-        gainDisplay.textContent = Math.round(unrealizedGain);
+        gainDisplay.textContent = shortFloat(unrealizedGain);
         gainDisplay.className = unrealizedGain >= 0 ? 'positive' : 'negative';
     } else {
         gainDisplay.textContent = '0';
@@ -138,7 +138,7 @@ function validatePositionSize() {
 
 function increasePosition(marginSize,positionSize)
 {
-    if (marginSize > cashBalance) return;
+    if (marginSize > cashBalance*0.8) return;
     if(entryPrice==0) entryPrice = candles[lastIndex-1].close;
     const wasZero = currentPosition === 0;
     cashBalance -= marginSize;
@@ -347,7 +347,7 @@ document.getElementById('randomBtn').addEventListener('click', function() {
         positionCostBasis = 0;
         positionMargin = 0;
         clearStopLimit();
-        document.getElementById('cashBalanceDisplay').textContent = Math.round(cashBalance);
+        document.getElementById('cashBalanceDisplay').textContent = shortFloat(cashBalance);
         document.getElementById('positionSizeInput').value = positionSize;
         calculateSpread();
         render();
@@ -412,18 +412,19 @@ document.getElementById('positionSizeInput').addEventListener('keydown', functio
 
 function adjustPositionSize(direction) {
     const input = document.getElementById('positionSizeInput');
-    let val = parseInt(input.value) || 1;
+    let val = positionSize;
     
     if (direction > 0) {
         val = val * 2;
     } else {
-        val = Math.floor(val / 2);
+        val = val / 2;//Math.floor(val / 2);
         if (val < 1) val = 1;
     }
     
-    input.value = val;
+    input.value = shortFloat(val);
     positionSize = val;
     validatePositionSize();
+    render(); // only if reflect size on graph in some way
 }
 
 document.getElementById('posSizeUp').addEventListener('click', function() {
@@ -492,5 +493,16 @@ document.getElementById('defaultSettingsLink').addEventListener('click', functio
 if (typeof applyDefaultSettings === 'function') {
     applyDefaultSettings();
 }
+
+const candleCountBtns = document.querySelectorAll('.candle-count-btn');
+
+candleCountBtns.forEach(btn => {
+    btn.addEventListener('click', function() {
+        candleCountBtns.forEach(b => b.classList.remove('selected'));
+        this.classList.add('selected');
+        CANDLE_COUNT = parseInt(this.dataset.value);
+        render();
+    });
+});
 
 console.log("app.js loaded");

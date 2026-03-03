@@ -1,7 +1,7 @@
 const canvas = document.getElementById('chart');
 const ctx = canvas.getContext('2d');
 
-const CANDLE_COUNT = 20;
+let CANDLE_COUNT = 20;
 const PADDING_TOP = 0.1;
 const PADDING_BOTTOM = 0.1;
 const RIGHT_MARGIN = 0.1;
@@ -16,6 +16,21 @@ let currentRange = null;
 let maxDecimalDigits = 0;
 
 const DRAG_THRESHOLD = 10;
+
+function shortFloat(n) {
+  if (!Number.isFinite(n)) return "–";
+  
+  const abs = Math.abs(n);
+  if (abs < 1000) {
+    return n.toFixed(2).replace(/\.?0+$/, "");
+  }
+  
+  const [v, s] = abs < 1e6 ? [n/1e3, "K"] : [n/1e6, "M"];
+  
+  return v.toFixed(2)
+    .replace(/0+$/, "")
+    .replace(/\.$/, "") + s;
+}
 
 function setStopLimit(stop, limit) {
     stopLoss = stop;
@@ -138,6 +153,12 @@ function render() {
         
         ctx.fillStyle = color;
         ctx.fillRect(x - bodyWidth / 2, bodyTop, bodyWidth, bodyHeight);
+        if(i==(visibleCount-1))
+        {
+            ctx.fillStyle = '#FFF';
+            ctx.textAlign = 'left';
+            ctx.fillText(shortFloat(positionSize*(candle.high/candle.low-1)), x - bodyWidth / 2, bodyTop);
+        }
     }
     
     const gridStart = range.max;

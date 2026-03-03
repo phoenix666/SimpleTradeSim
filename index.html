@@ -32,8 +32,19 @@
         .pos-light { color: #6f6; }
         .neg-light { color: #f66; }
         input[type="file"] { color: #ddd; }
-        button { padding: 8px 16px; cursor: pointer; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
+button { padding: 8px 16px; cursor: pointer; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+.candle-count-selector { display: flex; gap: 2px; }
+.candle-count-btn {
+    padding: 2px 6px;
+    background: #333;
+    color: #888;
+    cursor: pointer;
+    border-radius: 3px;
+    user-select: none;
+}
+.candle-count-btn:hover { background: #444; }
+.candle-count-btn.selected { background: #4a7; color: #fff; }
         #chartContainer { margin-top: 20px; }
         canvas { background: #000; display: block; }
         #log { margin-top: 20px; font-size: 12px; max-height: 200px; overflow-y: auto; font-family: monospace; }
@@ -98,7 +109,7 @@
         <button id="hotkeySettingsBtn" style="padding:4px 8px;font-size:12px">Hotkeys (H)</button>
     </div>
     <div class="trading-panel">
-        <div class="field"><a href="#" id="defaultSettingsLink" style='color:lightgray'>CashBalance:</a> <span id="cashBalanceDisplay">10000</span></div>
+        <div class="field"><a href="#" id="defaultSettingsLink" style='color:lightgray'>Cash:</a> <span id="cashBalanceDisplay" style='width:50px'>10000</span></div>
         <div class="field">Leverage: 
             <select id="leverageSelect">
                 <option value="10">1:10</option>
@@ -107,21 +118,27 @@
                 <option value="100">1:100</option>
             </select>
         </div>
-        <div class="field">PositionSize: 
+        <div class="field">Position: <span id="currentPositionDisplay">0</span></div>
+        <div class="field">Gain/Loss: <span id="unrealizedGainDisplay">0</span></div>
+        <div class="field">Size: 
             <div class="pos-input-wrap">
                 <button class="spin-btn" id="posSizeDown">▼</button>
-                <input type="number" id="positionSizeInput" value="50000" min="1">
+                <input type="text" id="positionSizeInput" value="50K" size='5' readonly onClick='positionSize=getDefaultSettings().positionSize;this.value=shortFloat(positionSize)'>
                 <button class="spin-btn" id="posSizeUp">▲</button>
             </div>
         </div>
-        <div class="field">CurrentPosition: <span id="currentPositionDisplay">0</span></div>
-        <div class="field">UnrealizedGain: <span id="unrealizedGainDisplay">0</span></div>
-        <button id="buyBtn">Buy</button>
-        <button id="sellBtn">Sell</button>
+        <button id="buyBtn" style='width:70px'>Buy</button>
+        <button id="sellBtn" style='width:70px'>Sell</button>
         <button id="closeHalfBtn">Close 50%</button>
     </div>
     <div id="debug"></div>
-    <div id="chartContainer">
+    <div id="chartContainer" style="position: relative;">
+    <div class="candle-count-selector" style='position: absolute;top: 5px;left: 5px;z-index: 15;font-size: 12px;'>
+    <span class="candle-count-btn" data-value="5">5</span>
+    <span class="candle-count-btn" data-value="10">10</span>
+    <span class="candle-count-btn selected" data-value="20">20</span>
+    <span class="candle-count-btn" data-value="40">40</span>
+    <span class="candle-count-btn" data-value="60">60</span></div>
         <canvas id="chart" width="800" height="400" style='width:800px;height:400px;'></canvas>
     </div>
     <div id="log"></div>
