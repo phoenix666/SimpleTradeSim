@@ -348,7 +348,7 @@ document.getElementById('randomBtn').addEventListener('click', function() {
         positionMargin = 0;
         clearStopLimit();
         document.getElementById('cashBalanceDisplay').textContent = shortFloat(cashBalance);
-        document.getElementById('positionSizeInput').value = positionSize;
+        document.getElementById('positionSizeInput').value = shortFloat(positionSize);
         calculateSpread();
         render();
         updateTradingDisplay();
