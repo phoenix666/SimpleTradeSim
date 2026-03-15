@@ -55,7 +55,7 @@ function getDefaultSettings() {
 function getStepSize() {
     if (!currentRange || candles.length === 0) return 0.01;
     const range = currentRange.max - currentRange.min;
-    return range / 100;
+    return Math.max(range / 100,Math.pow(10,-maxDecimalDigits));
 }
 
 function moveStop(direction) {
