@@ -176,8 +176,6 @@ function checkStopLimitClose(newCandle, oldClose) {
     if (stopLoss > 0 && inRange(stopLoss, oldClose, whatHappenedFirst)) {
         unrealizedGain = currentPosition * (stopLoss / oldClose) - positionCostBasis*spreadCorrection;
         slClose = stopLoss;
-        //shadowGain = currentPosition * (stopLoss / oldClose) - positionCostBasis;
-        //console.log(" "+unrealizedGain+" ; "+shadowGain); this was testing in all 4
         closePosition();
         updateTradingDisplay();
         return true;
@@ -221,6 +219,7 @@ function checkMarginCall(newCandle, previousClose) {
         const tGain = currentPosition*(price/previousClose) - positionCostBasis;
         if (cashBalance + tGain < 0) {
             unrealizedGain = tGain;
+            slClose = price; // for the log
             closePosition();
             updateTradingDisplay();
             showToast("The position was liquidated due to a margin call.");
@@ -358,7 +357,6 @@ document.getElementById('randomBtn').addEventListener('click', function() {
 document.getElementById('stepForwardBtn').addEventListener('click', function() {
     if (candles.length > 0 && lastIndex < candles.length) {
         const oldClose = candles[lastIndex-1].close;
-        const previousClose = lastIndex >= 2 ? candles[lastIndex-2].close : oldClose;
         lastIndex++;
         const newCandle = candles[lastIndex-1];
         const newClose = newCandle.close; 
@@ -370,7 +368,7 @@ document.getElementById('stepForwardBtn').addEventListener('click', function() {
         }
         
         if (currentPosition !== 0) {
-            if (checkMarginCall(newCandle, previousClose)) {
+            if (checkMarginCall(newCandle, oldClose)) {
                 calculateSpread();
                 render();
                 updateTradingDisplay();
